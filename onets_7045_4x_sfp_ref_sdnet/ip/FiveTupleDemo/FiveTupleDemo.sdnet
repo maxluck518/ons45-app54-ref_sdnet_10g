@@ -1,0 +1,238 @@
+//----------------------------------------------------------------------------
+//   This file is owned and controlled by Xilinx and must be used solely    //
+//   for design, simulation, implementation and creation of design files    //
+//   limited to Xilinx devices or technologies. Use with non-Xilinx         //
+//   devices or technologies is expressly prohibited and immediately        //
+//   terminates your license.                                               //
+//                                                                          //
+//   XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS" SOLELY   //
+//   FOR USE IN DEVELOPING PROGRAMS AND SOLUTIONS FOR XILINX DEVICES.  BY   //
+//   PROVIDING THIS DESIGN, CODE, OR INFORMATION AS ONE POSSIBLE            //
+//   IMPLEMENTATION OF THIS FEATURE, APPLICATION OR STANDARD, XILINX IS     //
+//   MAKING NO REPRESENTATION THAT THIS IMPLEMENTATION IS FREE FROM ANY     //
+//   CLAIMS OF INFRINGEMENT, AND YOU ARE RESPONSIBLE FOR OBTAINING ANY      //
+//   RIGHTS YOU MAY REQUIRE FOR YOUR IMPLEMENTATION.  XILINX EXPRESSLY      //
+//   DISCLAIMS ANY WARRANTY WHATSOEVER WITH RESPECT TO THE ADEQUACY OF THE  //
+//   IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OR         //
+//   REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE FROM CLAIMS OF        //
+//   INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A  //
+//   PARTICULAR PURPOSE.                                                    //
+//                                                                          //
+//   Xilinx products are not intended for use in life support appliances,   //
+//   devices, or systems.  Use in such applications are expressly           //
+//   prohibited.                                                            //
+//                                                                          //
+//   (c) Copyright 1995-2016 Xilinx, Inc.                                   //
+//   All rights reserved.                                                   //
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+class Packet_input  :: Packet(in) {}
+class Packet_output :: Packet(out) {}
+
+struct metadata_t{
+    pad          : 96,
+    phy_dst_port : 8,
+    phy_src_port : 8,
+    pktlen       : 16
+}
+
+class Tuple_input  :: Tuple(in) { 
+    struct metadata_t;
+}
+
+class Tuple_output  :: Tuple(out) { 
+    struct metadata_t;
+}
+
+class FiveTupleDemo:: System {
+    Packet_input instream;
+    Packet_output outstream;
+    Tuple_input metadata_in;
+    Tuple_output metadata_out;
+    OF_parser parser;
+    update_phy_src_port update_src;
+    update_phy_dst_port update_dst;
+    ACL lookup;
+
+    method connect = {
+        parser.packet_in        = instream,
+        update_src.metadata     = metadata_in,
+        update_src.fields       = parser.fields,
+        lookup.request          = update_src.fields,
+        update_dst.metadata     = metadata_in,
+        update_dst.lookup_tuple = lookup.response,
+        outstream               = parser.packet_out,
+        metadata_out            = update_dst.metadata
+    }
+}
+
+struct of_header_fields {
+    phy_src_port : 8,  // Arrival phy_src_port
+    sa           : 32,   // IP
+    da           : 32,
+    proto        : 8,
+    sp           : 16,   // TCP or UDP
+    dp           : 16
+}
+
+class update_phy_src_port :: TupleEngine(1,modify_fields) {
+    class ParserTuple :: Tuple(inout) {
+        struct of_header_fields;
+    } 
+    class Metadata :: Tuple(in) {
+        struct metadata_t;
+    } 
+
+    ParserTuple fields;
+    Metadata metadata;
+
+    class modify_fields:: Section(1) {
+        method update = {
+            fields.phy_src_port = metadata.phy_src_port
+        }
+
+        method move_to_section = done(1);
+    }
+}
+
+class update_phy_dst_port :: TupleEngine(1,modify_fields) {
+    class LookupTuple:: Tuple(in) {
+        struct {
+            phy_dst_port : 8
+        }
+    }
+
+    class Metadata :: Tuple(inout) {
+        struct metadata_t;
+    } 
+
+    LookupTuple lookup_tuple;
+    Metadata metadata;
+
+    class modify_fields:: Section(1) {
+        method update = {
+            metadata.phy_dst_port = lookup_tuple.phy_dst_port
+        }
+        method move_to_section = done(1);
+    }
+}
+  
+class ACL :: LookupEngine(TCAM, 64, 112, 8, 0) {
+    class  request_tuple :: Tuple(in) {
+        struct of_header_fields;
+    }
+    class response_tuple :: Tuple(out) {
+        struct {
+            phy_dst_port : 8
+        }
+    }
+    request_tuple request;
+    response_tuple response;
+
+    method send_request = {
+        key = request
+    }
+
+    method receive_response = {
+        response = value
+    }   
+}
+
+class OF_parser :: ParsingEngine (12800, 4, ETH_header) {
+
+    // Interface object for an OpenFlow 1.0 12-tuple
+    class Fields :: Tuple(out) {
+        struct of_header_fields;
+    } 
+
+    Fields fields;
+
+    const VLAN_TYPE = 0x8100;
+    const IP_TYPE = 0x0800;
+
+    // Section sub-class for an Ethernet header
+    class ETH_header :: Section(1) {
+        struct { 
+            dmac : 48, 
+            smac : 48, 
+            type : 16 
+        }
+
+        method move_to_section =
+	    if (type == VLAN_TYPE) 
+                VLAN_header
+	    else if (type == IP_TYPE) 
+                IP_header 
+            else 
+                done(1);
+    }
+
+    
+    // Section sub-class for a VLAN header
+    class VLAN_header :: Section(2) {
+        struct {
+            pcp : 3, 
+            cfi : 1, 
+            vid : 12, 
+            tpid : 16 
+        }
+
+        method move_to_section = 
+            if (tpid == 0x0800) 
+                IP_header 
+            else 
+                done(1);    
+    }
+
+    const TCP_PROTO = 6;
+    const UDP_PROTO = 17;
+
+    // Section sub-class for an IP header
+    class IP_header :: Section(2, 3) {
+        struct {
+            version : 4,
+            hdr_len : 4,
+            tos : 8,
+            length : 16,
+            id : 16,
+            flags : 3,
+            offset : 13,
+            ttl : 8,
+            proto : 8,
+            hdr_chk : 16,
+            sa : 32,
+            da : 32
+        } 
+
+        method update = { 
+            fields.sa = sa, 
+            fields.da = da, 
+            fields.proto = proto
+        }
+
+        method move_to_section = 
+            if (proto == TCP_PROTO || proto == UDP_PROTO) 
+                TCP_UDP_header 
+            else 
+                done(1);    
+
+        method increment_offset = hdr_len * 32;
+    }
+    
+    // Section sub-class for a TCP or UDP header 
+    class TCP_UDP_header :: Section(3, 4) { 
+        struct { 
+            sp : 16, 
+            dp : 16
+        }
+
+        method update = { 
+            fields.sp = sp, 
+            fields.dp = dp 
+        }
+
+        method move_to_section = done(0);
+
+        method increment_offset = 0;
+    }
+}

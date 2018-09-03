@@ -1,0 +1,74 @@
+SDNet compiler arguments:
+	 -bustype axi -busWidth 256 -workDir ./lab1 pppoe.sdnet
+
+
+/*********************/
+
+Sync 0: S_SYNCER_for_qinq_ac
+	Ports: 
+		packet_in_PACKET2,	calc. depth: 202,	unforced_depth: 256, 	forced_depth: 512,	backpressure_thresh: 109
+		tuple_in_TUPLE0,	calc. depth: 63,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 27
+		tuple_in_TUPLE1,	calc. depth: 101,	unforced_depth: 128, 	forced_depth: 512,	backpressure_thresh: 55
+		tuple_in_TUPLE3,	calc. depth: 101,	unforced_depth: 128, 	forced_depth: 512,	backpressure_thresh: 55
+		tuple_in_TUPLE4,	calc. depth: 101,	unforced_depth: 128, 	forced_depth: 512,	backpressure_thresh: 55
+		tuple_in_TUPLE5,	calc. depth: 101,	unforced_depth: 128, 	forced_depth: 512,	backpressure_thresh: 55
+		tuple_in_TUPLE6,	calc. depth: 101,	unforced_depth: 128, 	forced_depth: 512,	backpressure_thresh: 55
+		tuple_in_TUPLE8,	calc. depth: 101,	unforced_depth: 128, 	forced_depth: 512,	backpressure_thresh: 55
+
+
+/*********************/
+
+Sync 1: S_SYNCER_for_domain_ac
+	Ports: 
+		packet_in_PACKET1,	calc. depth: 84,	unforced_depth: 128, 	forced_depth: 512,	backpressure_thresh: 50
+		tuple_in_TUPLE0,	calc. depth: 42,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 25
+		tuple_in_TUPLE2,	calc. depth: 31,	unforced_depth: 32, 	forced_depth: 512,	backpressure_thresh: 11
+		tuple_in_TUPLE3,	calc. depth: 42,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 25
+		tuple_in_TUPLE4,	calc. depth: 42,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 25
+		tuple_in_TUPLE5,	calc. depth: 42,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 25
+		tuple_in_TUPLE7,	calc. depth: 42,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 25
+
+
+/*********************/
+
+Sync 2: S_SYNCER_for_l3_ac
+	Ports: 
+		packet_in_PACKET1,	calc. depth: 84,	unforced_depth: 128, 	forced_depth: 512,	backpressure_thresh: 50
+		tuple_in_TUPLE0,	calc. depth: 42,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 25
+		tuple_in_TUPLE2,	calc. depth: 42,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 25
+		tuple_in_TUPLE3,	calc. depth: 31,	unforced_depth: 32, 	forced_depth: 512,	backpressure_thresh: 11
+		tuple_in_TUPLE4,	calc. depth: 42,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 25
+		tuple_in_TUPLE5,	calc. depth: 42,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 25
+
+
+/*********************/
+
+Sync 3: S_SYNCER_for_get_mac
+	Ports: 
+		packet_in_PACKET3,	calc. depth: 51,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 17
+		tuple_in_TUPLE0,	calc. depth: 26,	unforced_depth: 32, 	forced_depth: 512,	backpressure_thresh: 9
+		tuple_in_TUPLE1,	calc. depth: 26,	unforced_depth: 32, 	forced_depth: 512,	backpressure_thresh: 9
+		tuple_in_TUPLE2,	calc. depth: 26,	unforced_depth: 32, 	forced_depth: 512,	backpressure_thresh: 9
+		tuple_in_TUPLE4,	calc. depth: 26,	unforced_depth: 32, 	forced_depth: 512,	backpressure_thresh: 9
+		tuple_in_TUPLE5,	calc. depth: 26,	unforced_depth: 32, 	forced_depth: 512,	backpressure_thresh: 9
+
+
+/*********************/
+
+Sync 4: S_SYNCER_for_l2_ac
+	Ports: 
+		packet_in_PACKET4,	calc. depth: 97,	unforced_depth: 128, 	forced_depth: 512,	backpressure_thresh: 63
+		tuple_in_TUPLE0,	calc. depth: 38,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 15
+		tuple_in_TUPLE1,	calc. depth: 38,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 15
+		tuple_in_TUPLE2,	calc. depth: 49,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 32
+		tuple_in_TUPLE3,	calc. depth: 49,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 32
+		tuple_in_TUPLE5,	calc. depth: 49,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 32
+
+
+/*********************/
+
+Sync 5: S_SYNCER_for__OUT_
+	Ports: 
+		packet_in_PACKET1,	calc. depth: 51,	unforced_depth: 64, 	forced_depth: 512,	backpressure_thresh: 17
+		tuple_in_TUPLE0,	calc. depth: 27,	unforced_depth: 32, 	forced_depth: 512,	backpressure_thresh: 10
+

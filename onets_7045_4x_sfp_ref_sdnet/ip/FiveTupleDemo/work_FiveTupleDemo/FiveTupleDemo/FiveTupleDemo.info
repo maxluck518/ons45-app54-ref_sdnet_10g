@@ -1,0 +1,31 @@
+SDNet compiler arguments:
+	 FiveTupleDemo.sdnet -busType axi -busWidth 256 -lineClock 125 -lookupClock 76.923080 -controlClock 76.923080 -singleControlPort -workDir work_FiveTupleDemo
+
+
+/*********************/
+
+Sync 0: S_SYNCER_for_S_SYNCER_for_S_PROTOCOL_ADAPTER_EGRESS
+	Ports: 
+		packet_in_PACKET4,	calc_depth: 323,	actual_depth: 512,	backpressure_thresh: 179
+		tuple_in_TUPLE0,	calc_depth: 218,	actual_depth: 256,	backpressure_thresh: 129
+		tuple_in_TUPLE1,	calc_depth: 168,	actual_depth: 256,	backpressure_thresh: 79
+		tuple_in_TUPLE3,	calc_depth: 168,	actual_depth: 256,	backpressure_thresh: 79
+
+
+/*********************/
+
+Sync 1: S_SYNCER_for_S_PROTOCOL_ADAPTER_EGRESS
+	Ports: 
+		packet_in_PACKET3,	calc_depth: 315,	actual_depth: 512,	backpressure_thresh: 171
+		tuple_in_TUPLE0,	calc_depth: 108,	actual_depth: 128,	backpressure_thresh: 49
+		tuple_in_TUPLE1,	calc_depth: 194,	actual_depth: 256,	backpressure_thresh: 106
+		tuple_in_TUPLE2,	calc_depth: 194,	actual_depth: 256,	backpressure_thresh: 106
+
+
+/*********************/
+
+Sync 2: S_SYNCER_for__OUT_
+	Ports: 
+		packet_in_PACKET0,	calc_depth: 287,	actual_depth: 512,	backpressure_thresh: 143
+		tuple_in_TUPLE1,	calc_depth: 168,	actual_depth: 256,	backpressure_thresh: 79
+

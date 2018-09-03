@@ -1,0 +1,957 @@
+/* **************************    const vlaue declaration    *************************** */
+
+const ETHERTYPE_VLAN        = 0x8100;
+const ETHERTYPE_QINQ        = 0x88a8;
+const ETHERTYPE_ARP         = 0x0806;
+const ETHERTYPE_PPPOE_DIS   = 0x8863;
+const ETHERTYPE_PPPOE_SES   = 0x8864;
+const ETHERTYPE_IPV4        = 0x0800;
+const PPP_PROTOCOL_IP       = 0x0021;
+const ETHERNET_LENGTH       = 0x0e;
+const PPP_PROTOCOL_LENGTH   = 0x02;
+const IP_PAYLOAD_LENGTH     = 0x0c;
+const PPPOE_VERSION         = 0x11;
+const PPPOE_SES_CODE        = 0x0;
+
+const MAX_PACKET_SIZE_BITS = 76800; // max offset into the packet in bits = 8 * 9600 = 76,800
+const TABLE_DEPTH = 256;
+const SUCCESS = 0;    
+const FAILURE = 1;    
+
+struct need_to_drop{
+    drop_flag : 1
+}
+
+struct tuple_for_output{
+    pad : 96,
+    dst_port : 8,
+    src_port : 8,
+    pkt_len : 16
+}
+
+struct parser_metadata{       
+    eth_smac : 48,
+    eth_dmac :48,
+    eth_type : 16,
+    sa     : 32, 
+    da     : 32, 
+    proto  : 8,
+    ipv4_length : 16
+}
+
+struct domain_metadata{
+    drop : 1,
+    L3 : 1,
+    pppL2 : 1,
+    extL2 : 1
+}
+
+struct qinq_tb_match{       
+    eth_type : 16,
+    pppoe_dis_code : 8
+}
+
+struct qinq_tb_action{
+    qinq_tb_list : 2
+}
+
+struct domain_tb_match{       
+    eth_type : 16,
+    ppp_protocol : 16
+}
+
+struct domain_tb_action{
+    domain_tb_list : 3
+}
+
+struct domain_tb_value{
+    L3 : 1,
+    pppL2 : 1,
+    extL2 : 1
+}
+
+struct L3_tb_match{
+    dst_ip : 32
+}
+
+struct L3_tb_action{
+    mac_id : 2,
+    ppp_id : 2,
+    dmac : 48,
+    smac : 48,
+    sid : 16
+}
+
+struct tuple_for_mac{
+    hit : 1,
+    dmac : 48
+}
+
+struct pppL2_tb_match{
+    dmac : 48
+}
+
+struct pppL2_tb_action{
+    pppL2_tb_list : 3,
+    port : 2,
+    svid : 12,
+    cvid :12
+}
+
+struct extL2_tb_match{
+    dmac : 48
+}
+
+struct extL2_tb_action{
+    extL2_tb_list : 3,
+    port : 2,
+    svid : 12,
+    cvid :12
+}
+
+struct add_vlan_tb_match{
+    vlan_flag : 2
+}
+
+struct add_vlan_tb_action{
+    add_vlan_tb_list : 2,
+    svid : 12,
+    cvid : 12
+}
+struct standard_metadata{
+    pkt_len : 16,
+    src_port : 8,
+    dst_port : 8,
+    pad :32 
+}
+struct ethernet {
+    dmac : 48,
+    smac : 48,
+    ethertype : 16
+}
+
+struct ipv4 {
+    version  : 4,
+    hdr_len  : 4,
+    dscp     : 6,
+    cu       : 2,
+    length   : 16,
+    id       : 16,
+    flags    : 3,
+    offset   : 13,
+    ttl      : 8,
+    protocol : 8,
+    hdr_crc  : 16,
+    src_addr : 32,
+    dst_addr : 32
+}
+
+struct vlan {
+    pcp : 3,
+    vfi : 1,
+    vid : 12,
+    ethertype : 16
+}
+
+struct qinq {
+    spcp : 3,
+    svfi : 1,
+    svid : 12,
+    svlantype : 16,
+    cpcp : 3,
+    cvfi : 1,
+    cvid : 12,
+    cvlantype : 16
+}
+
+struct arp {
+    hardwareype : 16,
+    protocolype : 16,
+    hardware_size : 8,
+    protocol_size : 8,
+    op_code : 16,
+    src_mac : 48,
+    src_ip : 32,
+    dst_mac :48,
+    dst_ip : 32
+}
+
+struct pppoe_dis {
+    version : 8,
+    code : 8,
+    session_id : 16,
+    payload_length : 16
+}
+
+struct pppoe_ses {
+    version : 8,
+    code : 8,
+    session_id : 16,
+    payload_length : 16,
+    ppp_protocol : 16
+}
+
+struct tcp { 
+    src_port : 16,
+    dst_port : 16,
+    seq_num  : 32,
+    ack_num  : 32,
+    offset   :  4,
+    reserved :  3,
+    flags    :  9,
+    window   : 16,
+    checksum : 16,
+    urgent   : 16
+}
+
+struct udp{ 
+    src_port : 16,
+    dst_port : 16,
+    length   : 16,
+    checksum : 16
+}
+
+
+// Standard interface subclass declarations
+class Packet_input  :: Packet(in) {}
+class Packet_output :: Packet(out) {}
+
+class Tuple_output  :: Tuple(out) { 
+    struct tuple_for_output;
+}
+
+class PPPOE:: System {
+    Packet_input instream;
+    Packet_output outstream;
+    Tuple_output flowstream;
+
+    Parser parser;
+    Qinq_table qinq_tb;
+    Qinq_action qinq_ac;
+    Domain_table domain_tb;
+    Domain_action domain_ac;
+    L3_table l3_tb;
+    L3_action l3_ac;
+
+    Get_MAC get_mac;
+    pppL2_table pppL2_tb;
+    extL2_table extL2_tb;
+    L2_action l2_ac;
+
+    method connect = {
+        parser.packet_in = instream,
+        qinq_tb.request = parser.qinq_tb_in,
+        qinq_ac.action_in = qinq_tb.response,
+        qinq_ac.packet_in = parser.packet_out,
+
+        domain_tb.request = parser.domain_tb_in,
+        domain_ac.packet_in = qinq_ac.packet_out,
+        domain_ac.action_in = domain_tb.response,
+        domain_ac.metadata_in = parser.domain_metadata_out,
+        domain_ac.metadata = parser.metadata,
+
+        l3_tb.request = parser.l3_tb_in,
+        l3_ac.packet_in = domain_ac.packet_out,
+        l3_ac.metadata_in = domain_ac.metadata_out,
+        l3_ac.action_in = l3_tb.response,
+
+        get_mac.l3_mac = l3_ac.mac_out,
+        get_mac.origin_mac = parser.metadata,
+        pppL2_tb.request = get_mac.mac_out,
+        extL2_tb.request = get_mac.mac_out,
+
+        l2_ac.pppL2_in = pppL2_tb.response,
+        l2_ac.extL2_in = extL2_tb.response,
+        l2_ac.metadata_in = l3_ac.metadata_out,
+        l2_ac.header_metadata = parser.header_metadata,
+        l2_ac.packet_in = l3_ac.packet_out,
+        flowstream = l2_ac.output_tuple,
+        outstream = l2_ac.packet_out
+    }
+}
+// ***********************************************************************************************
+
+class Parser :: ParsingEngine (
+    MAX_PACKET_SIZE_BITS,
+    5,          // number of processing stages / protocol layers
+    Ethernet    // default starting section
+) {
+    // IP protocols
+    const TCP_PROTOCOL  = 0x6;
+    const UDP_PROTOCOL  = 0x11;
+    const ICMP_PROTOCOL  = 0x1;
+    
+    // parser status codes
+    const ERR_ETHERNET = 1;
+    const ERR_VLAN     = 2;
+    const ERR_QINQ     = 3;
+    const ERR_IPv4     = 4;
+    const ERR_TCP      = 5;
+    const ERR_PPPOE_SES      = 6;
+
+    class Metadata:: Tuple(out) {
+        struct parser_metadata;
+    }
+
+    class Header_metadata:: Tuple(out){
+        struct standard_metadata;
+    }
+    class Qinq_tb_in:: Tuple(out) {
+        struct qinq_tb_match;
+    }
+
+    class Domain_tb_in:: Tuple(out) {
+        struct domain_tb_match;
+    }
+
+    class L3_tb_in :: Tuple(out) {
+        struct L3_tb_match;
+    }
+    class Parser_domain_metadata_out :: Tuple(out){
+        struct domain_metadata;
+    }
+
+    Metadata metadata;
+    Header_metadata header_metadata;
+    Parser_domain_metadata_out domain_metadata_out;
+    Qinq_tb_in qinq_tb_in;
+    Domain_tb_in domain_tb_in;
+    L3_tb_in l3_tb_in;
+    
+    class Ethernet :: Section(1) {
+        /* struct ethernet; */
+        struct {
+            pkt_len : 16,
+            src_port : 8,
+            dst_port : 8,
+            pad : 32,
+            dmac : 48,
+            smac : 48,
+            ethertype : 16
+        }
+        map types {
+            (ETHERTYPE_VLAN,     VLAN),
+            (ETHERTYPE_IPV4,     IPv4),
+            (ETHERTYPE_QINQ,     QINQ),
+            (ETHERTYPE_ARP,      ARP),
+            (ETHERTYPE_PPPOE_DIS,      PPPOE_DIS),
+            (ETHERTYPE_PPPOE_SES,      PPPOE_SES),
+                            done(ERR_ETHERNET)
+        }
+        method update = { 
+                            qinq_tb_in.eth_type = ethertype,
+                            domain_tb_in.eth_type = ethertype,
+                            header_metadata.pkt_len = pkt_len,
+                            header_metadata.src_port = src_port,
+                            header_metadata.dst_port = dst_port,
+                            header_metadata.pad = pad,
+                            metadata.eth_type = ethertype,
+                            metadata.eth_dmac = dmac,
+                            metadata.eth_smac = smac,
+                            domain_metadata_out.L3 = 0,
+                            domain_metadata_out.pppL2 = 0,
+                            domain_metadata_out.extL2 = 0,
+                            domain_metadata_out.drop = 0
+
+                        }
+        method move_to_section = types(ethertype);
+    }
+      
+    class VLAN :: Section(2)  {
+        struct vlan;
+        map types {
+            (ETHERTYPE_IPV4,     IPv4),
+            (ETHERTYPE_PPPOE_DIS,     PPPOE_DIS),
+            (ETHERTYPE_PPPOE_SES,     PPPOE_SES),
+                            done(ERR_VLAN)
+        }
+        method update = {
+            domain_tb_in.eth_type = ethertype
+        }
+        method move_to_section = types(ethertype);
+    }
+
+    class QINQ:: Section(2)  {
+        struct qinq;
+        map types {
+            (ETHERTYPE_IPV4,     IPv4),
+            (ETHERTYPE_PPPOE_DIS,     PPPOE_DIS),
+            (ETHERTYPE_PPPOE_SES,     PPPOE_SES),
+                            done(ERR_QINQ)
+        }
+        method update = {
+            domain_tb_in.eth_type = cvlantype
+        }
+        method move_to_section = types(cvlantype);
+    }
+
+    class PPPOE_DIS:: Section(2:3)  {
+        struct pppoe_dis;
+        method update = {
+                            qinq_tb_in.pppoe_dis_code = code
+                        }
+        method move_to_section = done(SUCCESS);
+    }
+
+    class PPPOE_SES:: Section(2:3)  {
+        struct pppoe_ses;
+        /* map types { */
+            /* (PPP_PROTOCOL_IP,     IPv4), */
+                            /* done(SUCCESS) */
+        /* } */
+        method update = {
+            domain_tb_in.ppp_protocol = ppp_protocol
+        }
+        /* method move_to_section = types(ppp_protocol); */
+        method move_to_section = if(ppp_protocol == PPP_PROTOCOL_IP) IPv4
+            else done(SUCCESS);
+    }
+
+    class ARP:: Section(2)  {
+        struct arp;
+        method move_to_section = done(SUCCESS); 
+    }
+    
+    class IPv4 :: Section(2:4) {
+        struct ipv4;
+        map types {
+            (TCP_PROTOCOL,  TCP),
+            (UDP_PROTOCOL,  UDP),
+            (ICMP_PROTOCOL, ICMP),
+                            done(ERR_IPv4)
+        }
+        method update = { 
+                            metadata.sa = src_addr,
+                            metadata.da = dst_addr,
+                            l3_tb_in.dst_ip = dst_addr,
+                            metadata.proto = protocol,
+                            metadata.ipv4_length = length
+                        }
+        method increment_offset = hdr_len * 32;
+        method move_to_section = if (hdr_len < 5) done(ERR_IPv4) else types(protocol);
+    }
+    class TCP :: Section(3:5) {
+        struct tcp;
+        method increment_offset = offset * 32; 
+        method move_to_section = if (offset < 5) done(ERR_TCP) else done(SUCCESS); 
+    }
+    
+    class UDP :: Section(3:5) {
+        struct udp;
+        method move_to_section = done(SUCCESS); 
+    }    
+
+    class ICMP:: Section(3:5) {
+        method move_to_section = done(SUCCESS); 
+    }    
+}
+
+// ***********************************************************************************************
+
+class Qinq_table:: LookupEngine( TCAM, TABLE_DEPTH, 24, 2, 0) {
+
+    class Tb_in:: Tuple(in) {
+        struct qinq_tb_match;
+    }
+
+    Tb_in request;
+
+    class Tb_out:: Tuple(out) {
+        struct qinq_tb_action;
+    }
+    Tb_out response;
+
+    method send_request = { key = request }
+    method receive_response = { response = value }
+
+}
+
+class Qinq_action :: EditingEngine( MAX_PACKET_SIZE_BITS, 2, judge) {
+
+    class Action_in:: Tuple(in) {
+        struct qinq_tb_action;
+    }
+    Action_in action_in;
+
+    const ERRTB_QINQ = 1;
+
+    class judge:: Section (1) {
+        struct {
+            pkt_len : 16,
+            src_port : 8,
+            dst_port : 8,
+            pad : 32,
+            smac : 48,
+            dmac : 48
+        }
+        map types {
+            (0,     nop),
+            (1,     pop_vlan),
+            (2,     pop_qinq),
+                            done(ERRTB_QINQ)
+        }
+        method move_to_section = types(action_in.qinq_tb_list);
+    }   
+
+    class nop:: Section (2) {
+        method remove=0;
+        method move_to_section = done(SUCCESS);
+    }   
+
+    class pop_vlan:: Section (2) {
+        struct vlan;
+        method remove;
+        method move_to_section = done(SUCCESS);
+    }   
+
+    class pop_qinq:: Section (2) {
+        struct qinq;
+        method remove;
+        method move_to_section = done(SUCCESS);
+    }   
+
+}
+
+// ***********************************************************************************************
+
+class Domain_table:: LookupEngine( TCAM, TABLE_DEPTH, 32, 3, 0) {
+
+    class Tb_in:: Tuple(in) {
+        struct domain_tb_match;
+    }
+
+    Tb_in request;
+
+    class Tb_out:: Tuple(out) {
+        struct domain_tb_action;
+    }
+
+    Tb_out response;
+
+    method send_request = { key = request }
+    method receive_response = { response = value }
+
+}
+
+class Domain_action :: EditingEngine(MAX_PACKET_SIZE_BITS,2,drop) {
+
+    class Action_in:: Tuple(in) {
+        struct domain_tb_action;
+    }
+    class Domain_metadata_in:: Tuple(in){
+        struct domain_metadata;
+    }
+    class Parser_metadata_in:: Tuple(in){
+        struct parser_metadata;
+    }
+    class Domain_metadata_out:: Tuple(out){
+        struct domain_metadata;
+    }
+    Action_in action_in;
+    Parser_metadata_in metadata;
+    Domain_metadata_in metadata_in;
+    Domain_metadata_out metadata_out;
+
+    class drop:: Section (1) {
+        map types {
+            (0,     nop),
+            (1,     L3),
+            (2,     pppL2),
+            (3,     extL2),
+            (4,     L3_push_pppoe),
+                            done(FAILURE)
+        }
+        method update = {
+            metadata_out.drop = if(action_in.domain_tb_list == 0) 1
+                else 0
+        }
+        method move_to_section = types(action_in.domain_tb_list);
+    }   
+
+    class nop:: Section (2) {
+        method update = {
+            metadata_out.L3 = 0,
+            metadata_out.pppL2 = 0,
+            metadata_out.extL2 = 0
+        }
+        method move_to_section = done(SUCCESS);
+    }   
+
+
+    class L3:: Section (2) {
+        method update = {
+            metadata_out.L3 = 1
+        }
+        method move_to_section = done(SUCCESS);
+    }   
+
+    class pppL2:: Section (2) {
+        method update = {
+            metadata_out.pppL2 = 1
+        }
+        method move_to_section = done(SUCCESS);
+    }   
+
+    class extL2:: Section (2) {
+        method update = {
+            metadata_out.extL2 = 1
+        }
+        method move_to_section = done(SUCCESS);
+    }   
+
+    class L3_push_pppoe:: Section (2) {
+        struct {
+            ethertype : 16,
+            version : 8,
+            code : 8,
+            session_id : 16,
+            payload_length : 16,
+            ppp_protocol : 16
+        }
+        method update = {
+            ethertype = ETHERTYPE_PPPOE_SES,
+            version = PPPOE_VERSION,
+            code = PPPOE_SES_CODE,
+            session_id = 0,
+            payload_length = metadata.ipv4_length + 2,
+            ppp_protocol = PPP_PROTOCOL_IP,
+            metadata_out.L3 = 1,
+            metadata_out.pppL2 = 1,
+            metadata_out.extL2 = 0
+        }
+        method increment_offset = 96+64;
+        method remove = 16;
+        method insert;
+        method move_to_section = done(SUCCESS);
+    }
+}
+
+// ***********************************************************************************************
+
+class L3_table:: LookupEngine( TCAM, TABLE_DEPTH, 32, 116, 0) {
+
+    class Tb_in:: Tuple(in) {
+        struct L3_tb_match;
+    }
+
+    Tb_in request;
+
+    class Tb_out:: Tuple(out) {
+        struct L3_tb_action;
+    }
+    Tb_out response;
+
+    method send_request = { key = request }
+    method receive_response = { response = value }
+
+}
+
+class L3_action :: EditingEngine( MAX_PACKET_SIZE_BITS, 3, nop) {
+
+    class L3_metadata_in:: Tuple(in){
+        struct domain_metadata;
+    }
+    class L3_action_in:: Tuple(in){
+        struct L3_tb_action;
+    }
+    class Mac_out:: Tuple(out) {
+        struct tuple_for_mac;
+    }
+    class L3_metadata_out:: Tuple(out){
+        struct domain_metadata;
+    }
+
+    L3_action_in action_in;
+    Mac_out mac_out;
+    L3_metadata_in metadata_in;
+    L3_metadata_out metadata_out;
+
+    const ERRAC_L3 = 1;
+
+    class nop:: Section (1) {
+        map types {
+            (1,     set_dmac),
+            (3,     set_smac_dmac),
+                            done(SUCCESS)
+        }
+        method update = {
+            /* metadata_out.drop = metadata_in.drop, */
+            metadata_out.drop = if(metadata_in.drop == 1 || (action_in.mac_id == 0 &&
+metadata_in.L3 == 1)) 1
+                else 0,
+            metadata_out.L3 = metadata_in.L3,
+            metadata_out.pppL2 = metadata_in.pppL2,
+            metadata_out.extL2 = metadata_in.extL2
+        }
+        method move_to_section = if(metadata_in.drop == 1 || action_in.mac_id == 0 ) done(SUCCESS)
+            else types(action_in.mac_id);
+    }   
+
+    class set_dmac:: Section (2) {
+        struct{
+            dmac : 48,
+            smac : 48
+        }
+        map types {
+            (0,     done(SUCCESS)),
+            (1,     pop_pppoe),
+            (2,     set_sid),
+                            done(FAILURE)
+        }
+        method update = {
+            dmac = action_in.dmac,
+            mac_out.hit = 1,
+            mac_out.dmac = action_in.dmac
+        }
+        method increment_offset = 64;
+        method move_to_section = types(action_in.ppp_id);
+    }   
+
+    class set_smac_dmac:: Section (2) {
+        struct{
+            dmac : 48,
+            smac : 48
+        }
+        map types {
+            (0,     done(SUCCESS)),
+            (1,     pop_pppoe),
+            (2,     set_sid),
+                            done(FAILURE)
+        }
+        method update = {
+            dmac = action_in.dmac,
+            smac = action_in.smac,
+            mac_out.hit = 1,
+            mac_out.dmac = action_in.dmac
+        }
+        method increment_offset = 64;
+        method move_to_section = types(action_in.ppp_id);
+    }   
+
+    class set_sid:: Section (3) {
+        struct {
+            ethertype : 16,
+            version : 8,
+            code : 8,
+            session_id : 16,
+            payload_length : 16,
+            ppp_protocol : 16
+        }
+        method update = {
+            session_id = action_in.sid,
+            metadata_out.pppL2 = 1,
+            metadata_out.extL2 = 0
+
+        }
+        method move_to_section = done(SUCCESS);
+    }
+
+    class pop_pppoe:: Section (3) {
+        struct {
+            ethertype : 16
+        }
+        method update = {
+            ethertype = ETHERTYPE_IPV4,
+            metadata_out.pppL2 = 0,
+            metadata_out.extL2 = 1
+        }
+        method remove = 80;
+        method insert;
+        method move_to_section = done(SUCCESS);
+    }
+}
+
+// ***********************************************************************************************
+
+class Get_MAC:: TupleEngine(1,mac){
+    class L3_mac_in:: Tuple(in) {
+        struct tuple_for_mac;
+    }
+
+    class Origin_mac_in:: Tuple(in){
+        struct parser_metadata;
+    }
+
+    class Mac_out:: Tuple(out){
+        struct {
+            dmac : 48
+        }
+    }
+
+    L3_mac_in l3_mac;
+    Origin_mac_in origin_mac;
+    Mac_out mac_out;
+
+    class mac:: Section (1){
+        method update = {
+           mac_out.dmac = if(l3_mac.hit == 1) l3_mac.dmac
+               else origin_mac.eth_dmac
+        }
+        method move_to_section = done(SUCCESS);
+    }
+
+}
+
+class pppL2_table:: LookupEngine( TCAM, TABLE_DEPTH, 48, 29, 0) {
+
+    class Tb_in:: Tuple(in) {
+        struct {
+            dmac : 48
+        }
+    }
+    Tb_in request;
+
+    class Tb_out:: Tuple(out) {
+        struct pppL2_tb_action;
+    }
+    Tb_out response;
+
+    method send_request = { key = request }
+    method receive_response = { response = value }
+
+}
+
+class extL2_table:: LookupEngine( TCAM, TABLE_DEPTH, 48, 29, 0) {
+
+    class Tb_in:: Tuple(in) {
+        struct {
+            dmac : 48
+        }
+    }
+    Tb_in request;
+
+    class Tb_out:: Tuple(out) {
+        struct extL2_tb_action;
+    }
+    Tb_out response;
+
+    method send_request = { key = request }
+    method receive_response = { response = value }
+
+}
+
+
+/* ******************************************************* */
+class L2_action :: EditingEngine( MAX_PACKET_SIZE_BITS, 4, nop) {
+    class Action_extL2_in:: Tuple(in) {
+        struct extL2_tb_action;
+    }
+    class Action_pppL2_in:: Tuple(in) {
+        struct pppL2_tb_action;
+    }
+    class L2_metadata_in:: Tuple(in){
+        struct domain_metadata;
+    }
+
+    class Header_metadata::Tuple(in){
+        struct standard_metadata;
+    }
+    class Output_Tuple:: Tuple(out) {
+        struct tuple_for_output;
+    }
+    class L2_tuple:: Tuple {
+        struct {
+            drop : 1,
+            L2_tb_list : 3,
+            port : 2,
+            svid : 12,
+            cvid : 12
+        }
+    }
+
+    const ERRAC_L2 = 1;
+
+    Action_extL2_in extL2_in;
+    Action_pppL2_in pppL2_in;
+    L2_metadata_in metadata_in;
+
+    Header_metadata header_metadata;
+    Output_Tuple  output_tuple;
+    L2_tuple l2_tuple;
+
+
+    class nop:: Section (1) {
+        method update = {
+            l2_tuple.drop = metadata_in.drop || (metadata_in.pppL2 == 0 &&
+metadata_in.extL2 == 0),
+            l2_tuple.L2_tb_list = if(metadata_in.pppL2 == 1) pppL2_in.pppL2_tb_list
+                else extL2_in.extL2_tb_list,
+            l2_tuple.port= if(metadata_in.pppL2 == 1) pppL2_in.port
+                else extL2_in.port,
+            l2_tuple.svid= if(metadata_in.pppL2 == 1) pppL2_in.svid
+                else extL2_in.svid,
+            l2_tuple.cvid= if(metadata_in.pppL2 == 1) pppL2_in.cvid
+                else extL2_in.cvid
+        }
+        method move_to_section = trans;
+    }   
+    class trans:: Section (2) {
+        method update = {
+            output_tuple.pkt_len = header_metadata.pkt_len,
+            output_tuple.pad = header_metadata.pad,
+            output_tuple.src_port = header_metadata.src_port,
+            output_tuple.dst_port = 128 
+        }
+        method move_to_section = if(l2_tuple.drop == 1) done(SUCCESS)
+            else if (metadata_in.drop == 0 && l2_tuple.L2_tb_list >> 2 ==
+0) controller
+            else set_port;
+    }   
+
+    class controller:: Section (3) {
+        method update = {
+            output_tuple.dst_port = 0
+        }
+        method remove=64;
+        method move_to_section = done(SUCCESS);
+    }   
+
+    class set_port:: Section (3) {
+        method update = {
+            output_tuple.dst_port = l2_tuple.port + 1
+        }
+        method remove=64;
+        method move_to_section = if(l2_tuple.L2_tb_list == 4) done(SUCCESS)
+            else if(l2_tuple.L2_tb_list == 5) push_qinq
+                else if(l2_tuple.L2_tb_list == 6) push_vlan
+                    else done(FAILURE);
+    }   
+
+    class push_vlan:: Section (4) {
+        struct {
+            vlantype : 16,
+            pcp : 3,
+            vfi : 1,
+            vid : 12
+        }
+        method update = {
+            vlantype = ETHERTYPE_VLAN,
+            vid = l2_tuple.svid
+        }
+        method increment_offset = 96;
+        method insert;
+        method move_to_section = done(SUCCESS);
+    }   
+
+    class push_qinq:: Section (4) {
+        struct {
+            svlantype : 16,
+            spcp : 3,
+            svfi : 1,
+            svid : 12,
+            cvlantype : 16,
+            cpcp : 3,
+            cvfi : 1,
+            cvid : 12
+        }
+        method update = {
+            svlantype = ETHERTYPE_QINQ,
+            svid = l2_tuple.svid,
+            cvlantype = ETHERTYPE_VLAN,
+            cvid = l2_tuple.cvid
+        }
+        method increment_offset = 96;
+        method insert;
+        method move_to_section = done(SUCCESS);
+    }   
+}
